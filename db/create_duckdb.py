@@ -2,11 +2,18 @@ import duckdb
 
 con = duckdb.connect("db/unit-1-5.db")
 
-con.sql(
-    """
-    CREATE TABLE address AS SELECT * FROM read_csv_auto('db/address.csv', HEADER=TRUE);
-    CREATE TABLE car AS SELECT * FROM read_csv_auto('db/car.csv', HEADER=TRUE);
-    CREATE TABLE claim AS SELECT * FROM read_csv_auto('db/claim.csv', HEADER=TRUE);
-    CREATE TABLE client AS SELECT * FROM read_csv_auto('db/client.csv', HEADER=TRUE);
-    """
-)
+# Create schema once
+con.sql("CREATE SCHEMA IF NOT EXISTS bypip")
+
+# Create each table explicitly
+tables = ["address", "car", "claim", "client"]
+
+for t in tables:
+    con.sql(f"""
+        CREATE OR REPLACE TABLE bypip.{t} AS
+        SELECT * FROM read_csv_auto('data/{t}.csv', HEADER=TRUE);
+    """)
+
+# Verify results
+con.sql("SET schema 'bypip';")
+print(con.sql("SHOW TABLES;").fetchall())
