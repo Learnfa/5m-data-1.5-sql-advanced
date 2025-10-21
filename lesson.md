@@ -353,6 +353,8 @@ WHERE id IN (
 );
 ```
 
+*[PSH] SubqueriCorrelated query is not too efficient, as inner SELECT runs for every row of the outer select*
+
 ### Correlated subquery
 
 A correlated subquery is a subquery that references a column from the outer query. It is useful when you want to use the result of a query as input to another query, and the inner query depends on the outer query. The subquery is evaluated once for each row processed by the outer query.
@@ -369,6 +371,9 @@ WHERE id IN (
 );
 ```
 
+*[PSH] Correlated query is not too efficient, as inner SELECT runs for every row of the outer select*
+
+
 You can use the `EXISTS` operator to check if a subquery returns any rows. It is useful when you want to check if a subquery returns any rows, and the result of the query doesn't matter.
 
 For example, if we want to find the cars that have been involved in a claim:
@@ -384,6 +389,8 @@ WHERE EXISTS (
 ```
 
 The `EXISTS` operator returns true if the subquery returns any rows, and false otherwise.
+
+*[PSH] Use EXISTS instead of Correlated as EXISTS will stop once 1 record is found*
 
 ### Subquery in FROM
 
@@ -406,6 +413,19 @@ The derived table is useful when you want to use the result of a query as a tabl
 
 > Return a table containing `id, resale_value, car_use` from car, where the car resale value is less than the average resale value for the car use.
 
+```sql
+SELECT 
+	c.id, c.car_use, c.resale_value, a.ave_value_by_use, 
+FROM main.car c
+INNER JOIN (
+	SELECT 
+		c.car_use, ROUND(AVG(resale_value),1) AS ave_value_by_use
+	FROM main.car c
+	GROUP by c.car_use
+) a ON c.car_use = a.car_use
+WHERE c.resale_value < a.ave_value_by_use;
+```
+
 ## Part 5 - Common Table Expressions
 
 A common table expression (CTE) is a named subquery. It is useful when you want to use the result of a query as input to another query, and the subquery is used more than once. The CTE is evaluated once, and the result is stored in a temporary table. The temporary table can be referenced in the query.
@@ -413,15 +433,22 @@ A common table expression (CTE) is a named subquery. It is useful when you want 
 Using the same example as above:
 
 ```sql
-WITH avg_resale_value_by_car_type AS (
-  SELECT car_type, AVG(resale_value) AS average_resale_value
-  FROM car
-  GROUP BY car_type
+WITH avg_value_by_use AS 
+(
+	SELECT 
+		c.car_use, ROUND(AVG(resale_value),1) AS ave_value
+	FROM main.car c
+	GROUP by c.car_use
 )
-SELECT id, resale_value, c1.car_type
-FROM car c1
-INNER JOIN avg_resale_value_by_car_type c2 ON c1.car_type = c2.car_type
-WHERE resale_value < average_resale_value;
+SELECT 
+	c.id, c.car_use, c.resale_value, a.ave_value, 
+	(a.ave_value - resale_value) AS value_diff
+FROM main.car c
+INNER JOIN avg_value_by_use a ON c.car_use = a.car_use
+WHERE c.resale_value < a.ave_value
+ORDER BY value_diff DESC;
 ```
 
 > Return a table using CTE containing `id, resale_value, car_use` from car, where the car resale value is less than the average resale value for the car use.
+
+

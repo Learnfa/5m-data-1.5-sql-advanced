@@ -2,11 +2,13 @@
 -- unit 1-5
 -----------------------
 
+-- meta queries
+
 SHOW ALL TABLES;
 
 SUMMARIZE address;
 SUMMARIZE car;
-SUMMARIZE claim;
+SUMMARIZE bypip.claim;
 SUMMARIZE client;
 
 SELECT COUNT(*) FROM claim;
@@ -58,6 +60,38 @@ FROM main.car c
 INNER JOIN avg_value a ON c.car_use = a.car_use
 WHERE c.resale_value < a.ave_value_by_use
 ORDER BY value_diff DESC;
+
+-----------------------
+-- OTHER TESTS
+-----------------------
+
+-- cars that has no claim
+SELECT *
+FROM main.car c
+LEFT JOIN main.claim cl
+ON c.id = cl.car_id
+WHERE cl.id IS NULL
+
+-- Average claim by car_type
+SELECT 
+	c.car_type, ROUND(AVG(cl.claim_amt),2) AS avg_cliam
+FROM main.car c
+LEFT JOIN main.claim cl
+ON c.id = cl.car_id
+GROUP BY c.car_type
+ORDER BY avg_cliam DESC
+
+-- Highest unit claim amount by state
+SELECT 
+	a.state, SUM(cl.claim_amt) AS total_claim, 
+	count(cl.id) AS no_of_claims, ROUND(total_claim/no_of_claims,2) AS unit_claim
+FROM main.address a
+LEFT JOIN main.client c
+ON a.id = c.address_id
+LEFT JOIN main.claim cl
+ON c.id = cl.client_id
+GROUP BY a.state
+ORDER BY unit_claim DESC
 
 
 -------------------
